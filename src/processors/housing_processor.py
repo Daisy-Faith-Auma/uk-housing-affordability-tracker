@@ -291,8 +291,10 @@ class HousingDataProcessor:
             recommendations.append("Implement national housing emergency measures")
         
         if median_ratio > 8:
-            recommendations.append("Expand Help to Buy scheme eligibility")
-            recommendations.append("Consider shared ownership programs in high-ratio areas")
+            recommendations.extend([
+                "Expand Help to Buy scheme eligibility",
+                "Consider shared ownership programs in high-ratio areas"
+            ])
         
         london_areas = latest_data[latest_data['region'] == 'London']
         if len(london_areas) > 0 and london_areas['price_to_earnings_ratio'].median() > 10:
@@ -307,3 +309,125 @@ class HousingDataProcessor:
         recommendations.append("Review planning permissions in high-demand areas")
         
         return recommendations
+    def create_enhanced_sample_data(self) -> pd.DataFrame:
+        """Create comprehensive sample data with regional classification"""
+        import numpy as np
+        
+        # Extended local authorities with regions
+        authorities_data = [
+            # London
+            ('Westminster', 'London', 14.2, 850000),
+            ('Kensington and Chelsea', 'London', 13.8, 920000),
+            ('Camden', 'London', 10.8, 680000),
+            ('Islington', 'London', 10.2, 650000),
+            ('Hackney', 'London', 9.1, 580000),
+            ('Tower Hamlets', 'London', 8.9, 560000),
+            
+            # South East
+            ('Brighton and Hove', 'South East', 8.9, 420000),
+            ('Oxford', 'South East', 9.2, 480000),
+            ('Cambridge', 'South East', 8.7, 520000),
+            ('Reading', 'South East', 7.8, 390000),
+            
+            # North
+            ('Manchester', 'North West', 5.8, 220000),
+            ('Liverpool', 'North West', 4.9, 180000),
+            ('Leeds', 'Yorkshire', 5.4, 210000),
+            ('Sheffield', 'Yorkshire', 4.2, 160000),
+            ('Newcastle', 'North East', 4.1, 155000),
+            
+            # Midlands
+            ('Birmingham', 'West Midlands', 5.9, 210000),
+            ('Nottingham', 'East Midlands', 5.2, 185000),
+            ('Leicester', 'East Midlands', 5.1, 190000),
+            ('Coventry', 'West Midlands', 5.7, 200000),
+            
+            # Wales & Southwest
+            ('Cardiff', 'Wales', 6.2, 240000),
+            ('Bristol', 'South West', 7.1, 350000),
+            ('Bath', 'South West', 8.3, 480000),
+        ]
+        
+        years = list(range(2018, 2025))
+        
+        data = []
+        for authority, region, base_ratio, base_price in authorities_data:
+            for year in years:
+                # Add year-over-year variation
+                year_factor = 1 + (year - 2020) * 0.05  # 5% annual growth
+                price_variation = np.random.uniform(0.95, 1.05)
+                ratio_variation = np.random.uniform(0.95, 1.05)
+                
+                current_price = base_price * year_factor * price_variation
+                current_ratio = base_ratio * ratio_variation
+                current_earnings = current_price / current_ratio
+                
+                data.append({
+                    'local_authority': authority,
+                    'region': region,
+                    'year': year,
+                    'price_to_earnings_ratio': round(current_ratio, 2),
+                    'median_house_price': round(current_price, -3),
+                    'median_earnings': round(current_earnings, -2),
+                    'data_source': 'SAMPLE_ENHANCED'
+                })
+        
+        df = pd.DataFrame(data)
+        
+        # Add calculated fields
+        df['affordability_category'] = pd.cut(
+            df['price_to_earnings_ratio'],
+            bins=[0, 4, 6, 8, 10, float('inf')],
+            labels=['Very Affordable', 'Affordable', 'Stretched', 'Unaffordable', 'Crisis']
+        )
+        
+        df['is_crisis_area'] = df['price_to_earnings_ratio'] > 8.0
+        
+        return df
+
+def calculate_regional_stats(self, data: pd.DataFrame) -> pd.DataFrame:
+    """Calculate regional summary statistics"""
+    
+    latest_year = data['year'].max()
+    latest_data = data[data['year'] == latest_year]
+    
+    regional_stats = latest_data.groupby('region').agg({
+        'price_to_earnings_ratio': ['mean', 'median', 'std'],
+        'median_house_price': ['mean', 'median'],
+        'median_earnings': ['mean', 'median'],
+        'is_crisis_area': 'sum',
+        'local_authority': 'count'
+    }).round(2)
+    
+    # Flatten column names
+    regional_stats.columns = ['_'.join(col).strip() for col in regional_stats.columns]
+    regional_stats = regional_stats.reset_index()
+    
+    # Calculate crisis percentage
+    regional_stats['crisis_percentage'] = (
+        regional_stats['is_crisis_area_sum'] / regional_stats['local_authority_count'] * 100
+    ).round(1)
+    
+    return regional_stats
+
+def create_time_series_data(self, data: pd.DataFrame) -> pd.DataFrame:
+    """Create time series aggregations"""
+    
+    national_trends = data.groupby('year').agg({
+        'price_to_earnings_ratio': 'median',
+        'median_house_price': 'median',
+        'median_earnings': 'median',
+        'is_crisis_area': ['sum', 'count']
+    }).round(2)
+    
+    # Flatten columns
+    national_trends.columns = ['_'.join(col) if col[1] else col[0] for col in national_trends.columns]
+    national_trends = national_trends.reset_index()
+    
+    # Calculate national crisis percentage
+    national_trends['crisis_percentage'] = (
+        national_trends['is_crisis_area_sum'] / national_trends['is_crisis_area_count'] * 100
+    ).round(1)
+    
+    return national_trends
+
