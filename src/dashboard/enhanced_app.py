@@ -12,6 +12,7 @@ from datetime import datetime
 API_CONFIG = {
     'ons_base_url': 'https://api.beta.ons.gov.uk/v1/datasets/',
     'land_registry_base': 'http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com',
+    'note': 'These APIs would be used in a production version with real data'
     'request_timeout': 60,
     'rate_limit_delay': 1,
     'user_agent': 'UK-Housing-Tracker/1.0 (Educational Project)'
